@@ -47,7 +47,7 @@ jobs:
 
       - name: Set startup command
         run: |
-          az webapp config set --name fpaanalytics --resource-group <YOUR_RESOURCE_GROUP> --startup-file "pm2 serve dist dist --no-daemon --spa"
+          az webapp config set --name fpaanalytics --resource-group <HIERARCHY> --startup-file "pm2 serve dist dist --no-daemon --spa"
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
