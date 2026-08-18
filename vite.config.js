@@ -6,6 +6,7 @@ import react from "@vitejs/plugin-react";  // Official Vite plugin that adds Rea
 // Export the Vite configuration
 export default defineConfig({
   plugins: [react()], // Register the React plugin so .jsx files compile correctly
+  base: "/",          // Base URL for the app. "/" means the app is served from the root of the domain.
   server: {
     port: 5173,        // Local dev server port -> app will run at http://localhost:5173
     proxy: {
