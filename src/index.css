@@ -1,0 +1,201 @@
+/* =========================================================================
+   GLOBAL DESIGN TOKENS
+   These CSS custom properties (variables) are the single source of truth
+   for color, type, spacing and radius across the whole portal. They are
+   pulled straight from the Forest Park Academy crest: deep forest green,
+   a warm gold banner accent, and a cream backdrop instead of stark white.
+   ========================================================================= */
+:root {
+  /* --- Color palette (named, not generic) --- */
+  --fp-forest: #1b4332;       /* Deep forest green - primary brand color, from the crest ring */
+  --fp-forest-dark: #0f2e21;  /* Darker shade - used for hover states / sidebar */
+  --fp-canopy: #2d6a4f;       /* Mid green - secondary accents, active nav states */
+  --fp-gold: #e0a458;         /* Warm gold - echoes the "FOREST PARK ACADEMY" banner text */
+  --fp-gold-deep: #c8863a;    /* Darker gold - hover state for gold elements */
+  --fp-cream: #f6f3ea;        /* Warm cream page background (not stark white) */
+  --fp-paper: #fffdf8;        /* Slightly-off-white card background, sits on cream */
+  --fp-ink: #1f2a24;          /* Near-black text with a green undertone */
+  --fp-ink-soft: #55645b;     /* Muted secondary text */
+  --fp-line: #ded6c2;         /* Hairline border color that reads as "parchment edge" */
+  --fp-danger: #b3413a;       /* Errors / delete actions */
+  --fp-success: #2d6a4f;      /* Success states (reuses canopy green) */
+
+  /* --- Typography --- */
+  --fp-font-display: "Fraunces", Georgia, serif;      /* Headings: academic, crest-like serif */
+  --fp-font-body: "Inter", system-ui, -apple-system, sans-serif; /* Body: clean, legible sans */
+
+  /* --- Spacing / shape scale (used instead of ad-hoc pixel values) --- */
+  --fp-radius-sm: 6px;
+  --fp-radius-md: 12px;
+  --fp-radius-lg: 20px;
+  --fp-space-1: 4px;
+  --fp-space-2: 8px;
+  --fp-space-3: 16px;
+  --fp-space-4: 24px;
+  --fp-space-5: 40px;
+  --fp-space-6: 64px;
+}
+
+/* Reset default browser spacing so our scale is the only thing in control */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--fp-cream);
+  color: var(--fp-ink);
+  font-family: var(--fp-font-body);
+  line-height: 1.5;
+  /* A very faint concentric "tree-ring" watermark, echoing the crest,
+     anchored bottom-right so it never competes with content. Signature
+     decorative element used sparingly across the whole app. */
+  background-image:
+    radial-gradient(circle at 100% 100%, rgba(27, 67, 50, 0.05) 0, rgba(27, 67, 50, 0.05) 2px, transparent 2px),
+    radial-gradient(circle at 100% 100%, rgba(27, 67, 50, 0.04) 0, rgba(27, 67, 50, 0.04) 2px, transparent 2px);
+  background-size: 42px 42px, 84px 84px;
+  background-position: 0 0, 21px 21px;
+}
+
+/* Headings all use the display serif, set slightly tight for an engraved feel */
+h1, h2, h3, h4 {
+  font-family: var(--fp-font-display);
+  color: var(--fp-forest-dark);
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button, input, select, textarea {
+  font-family: inherit; /* Form controls inherit Inter instead of the OS default font */
+  font-size: 1rem;
+}
+
+/* Reusable focus ring for keyboard navigation (accessibility) */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--fp-gold);
+  outline-offset: 2px;
+}
+
+/* Respect users who have asked their OS to reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ---------- Shared utility classes used across pages ---------- */
+
+.fp-card {
+  background: var(--fp-paper);
+  border: 1px solid var(--fp-line);
+  border-radius: var(--fp-radius-lg);
+  padding: var(--fp-space-4);
+  box-shadow: 0 1px 2px rgba(15, 46, 33, 0.04);
+}
+
+.fp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fp-space-2);
+  padding: 10px 18px;
+  border-radius: var(--fp-radius-sm);
+  border: 1px solid transparent;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+.fp-btn:active { transform: translateY(1px); } /* Tiny press feedback */
+
+.fp-btn-primary {
+  background: var(--fp-forest);
+  color: white;
+}
+.fp-btn-primary:hover { background: var(--fp-forest-dark); }
+
+.fp-btn-gold {
+  background: var(--fp-gold);
+  color: var(--fp-forest-dark);
+}
+.fp-btn-gold:hover { background: var(--fp-gold-deep); }
+
+.fp-btn-danger {
+  background: transparent;
+  color: var(--fp-danger);
+  border-color: var(--fp-danger);
+}
+.fp-btn-danger:hover { background: rgba(179, 65, 58, 0.08); }
+
+.fp-btn-ghost {
+  background: transparent;
+  color: var(--fp-forest-dark);
+  border-color: var(--fp-line);
+}
+.fp-btn-ghost:hover { background: rgba(27, 67, 50, 0.06); }
+
+.fp-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--fp-radius-sm);
+  border: 1px solid var(--fp-line);
+  background: var(--fp-paper);
+  color: var(--fp-ink);
+}
+.fp-input:focus { border-color: var(--fp-canopy); }
+
+.fp-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fp-ink-soft);
+  margin-bottom: var(--fp-space-1);
+}
+
+.fp-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.fp-badge-green { background: rgba(45, 106, 79, 0.14); color: var(--fp-canopy); }
+.fp-badge-gold { background: rgba(224, 164, 88, 0.2); color: var(--fp-gold-deep); }
+.fp-badge-red { background: rgba(179, 65, 58, 0.12); color: var(--fp-danger); }
+
+.fp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.fp-table th {
+  text-align: left;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fp-ink-soft);
+  border-bottom: 2px solid var(--fp-line);
+  padding: var(--fp-space-2) var(--fp-space-3);
+}
+.fp-table td {
+  padding: var(--fp-space-2) var(--fp-space-3);
+  border-bottom: 1px solid var(--fp-line);
+  font-size: 0.92rem;
+}
+.fp-table tr:hover td { background: rgba(27, 67, 50, 0.03); }
+
+.fp-empty {
+  text-align: center;
+  padding: var(--fp-space-5);
+  color: var(--fp-ink-soft);
+}
