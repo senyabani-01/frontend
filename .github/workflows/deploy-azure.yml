@@ -1,0 +1,66 @@
+name: Build and deploy Node app to Azure Web App
+
+# NOTE: This replaces any earlier Docker-based workflow. Your uploaded
+# files (package.json's pm2 "start" script, startup.txt, no more
+# nginx.conf) show you're now serving the built app directly on Azure's
+# Node runtime via pm2, not a container — this workflow matches that.
+
+on:
+  push:
+    branches: [ main ]        # change if your default branch has a different name
+  workflow_dispatch:
+
+env:
+  # CHANGE ME: the exact name of your Azure Web App (App Service)
+  AZURE_WEBAPP_NAME: your-azure-app-name
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Install dependencies (exact versions from package-lock.json)
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # Baked into the JS bundle at build time by Vite. Since your
+          # .env.production is gitignored, it never reaches GitHub — set
+          # the real backend URL as a repo secret instead (Settings →
+          # Secrets and variables → Actions → New repository secret).
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-app
+          path: |
+            node_modules
+            dist
+            package.json
+            package-lock.json
+            startup.txt
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: node-app
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}

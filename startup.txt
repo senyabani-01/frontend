@@ -1,1 +1,1 @@
-pm2 serve /home/site/wwwroot/dist /home/site/wwwroot/dist --no-daemon --spa
+pm2 serve /home/site/wwwroot/dist 8080 --no-daemon --spa

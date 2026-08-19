@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "pm2 serve dist dist --no-daemon --spa"
+    "start": "pm2 serve dist 8080 --no-daemon --spa"
   },
   "dependencies": {
     "axios": "^1.7.7",
