@@ -12,7 +12,7 @@ on:
 
 env:
   # CHANGE ME: the exact name of your Azure Web App (App Service)
-  AZURE_WEBAPP_NAME: your-azure-app-name
+  AZURE_WEBAPP_NAME: fpaanalytics
 
 jobs:
   build:
