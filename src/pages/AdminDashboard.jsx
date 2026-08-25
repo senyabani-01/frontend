@@ -173,6 +173,10 @@ const SUBJECTS = [
   "Travel and Tourism",
   "Accounting",
   "Business studies",
+  "Sociology",
+  "Biblical Studies",
+  "Religious Studies",
+  "Global Perspectives",
 ];
 
 const TABS = [
