@@ -1516,7 +1516,7 @@ function PublishedResultsPanel() {
 // no student selected and run a hypothetical "what-if" with marks typed in
 // by hand. Every run is saved server-side so "Recent predictions" below
 // has something to show.
-//
+//I LOVE CODING ============================================
 // NOTE ON SCOPE: the trained model only knows about ten specific subjects
 // (see MODEL_SUBJECT_FIELDS above) - it was trained on a historical export
 // that used exactly these ten, not the full current SUBJECTS curriculum
