@@ -1648,7 +1648,7 @@ function PredictAveragePanel() {
           <div style={{ flex: "1 1 260px" }}>
             <label className="fp-label" htmlFor="predictStudent">Student (optional)</label>
             <select id="predictStudent" className="fp-input" value={selectedStudentId} onChange={handleStudentSelect}>
-              <option value=""> Enter student Name </option>
+              <option value="">— Hypothetical / what-if (no student) —</option>
               {students.map((s) => (
                 <option key={s.id} value={s.id}>{s.fullName} ({s.gradeLevel})</option>
               ))}
