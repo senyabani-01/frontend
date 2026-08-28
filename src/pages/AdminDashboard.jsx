@@ -25,7 +25,7 @@
 import { useEffect, useState } from "react";
 import {
   Users, ClipboardList, ShieldCheck, CheckCircle2, XCircle, Trash2, Plus, BookPlus,
-  UserPlus, Undo2, Pencil, Save, FolderOpenDot,
+  UserPlus, Undo2, Pencil, Save, FolderOpenDot, TrendingUp, RefreshCw,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
@@ -48,6 +48,9 @@ import {
   adminListPublishedResults,
   adminDepublishResults,
   adminEditPublishedResult,
+  adminPrefillPrediction,
+  adminPredictAverage,
+  adminPredictAverageHistory,
 } from "../api/api";
 
 // -----------------------------------------------------------------------------
@@ -179,12 +182,34 @@ const SUBJECTS = [
   "Global Perspectives",
 ];
 
+// -----------------------------------------------------------------------------
+// PREDICT AVERAGE tab: the ten subjects the trained model was built on,
+// mapped to this school's real subject names for display, and the stream
+// options the model expects (the backend derives a real student's stream
+// from their "Form N Green/Yellow" gradeLevel automatically - see
+// mark_predictor.py's derive_stream_from_grade_level()).
+// -----------------------------------------------------------------------------
+const MODEL_SUBJECT_FIELDS = [
+  { key: "sho", label: "Shona" },
+  { key: "mat", label: "Mathematics" },
+  { key: "eng", label: "English Language" },
+  { key: "geo", label: "Geography" },
+  { key: "csci", label: "Computer Science" },
+  { key: "reMark", label: "Religious Studies" },
+  { key: "acc", label: "Accounting" },
+  { key: "hist", label: "History" },
+  { key: "cs", label: "Combined Science" },
+  { key: "bst", label: "Business studies" },
+];
+const MODEL_STREAM_OPTIONS = ["Green", "Yellow", "As Level"];
+
 const TABS = [
   { key: "students", label: "Students", icon: Users },
   { key: "exams", label: "Examinations", icon: ClipboardList },
   { key: "teachers", label: "Teacher access", icon: ShieldCheck },
   { key: "results", label: "Publish results", icon: CheckCircle2 },
   { key: "published", label: "Published results", icon: FolderOpenDot },
+  { key: "predict", label: "Predict Average", icon: TrendingUp },
 ];
 
 export default function AdminDashboard() {
@@ -201,6 +226,7 @@ export default function AdminDashboard() {
           {activeTab === "teachers" && <TeachersPanel />}
           {activeTab === "results" && <ResultsPanel />}
           {activeTab === "published" && <PublishedResultsPanel />}
+          {activeTab === "predict" && <PredictAveragePanel />}
         </main>
       </div>
     </div>
@@ -1477,6 +1503,250 @@ function PublishedResultsPanel() {
               </div>
             );
           })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// PREDICT AVERAGE PANEL: early-estimate tool. An admin can either pick a
+// real enrolled student (which prefills whichever of the model's ten
+// subjects that student already has marks for, plus their stream) or leave
+// no student selected and run a hypothetical "what-if" with marks typed in
+// by hand. Every run is saved server-side so "Recent predictions" below
+// has something to show.
+//
+// NOTE ON SCOPE: the trained model only knows about ten specific subjects
+// (see MODEL_SUBJECT_FIELDS above) - it was trained on a historical export
+// that used exactly these ten, not the full current SUBJECTS curriculum
+// list. Subjects outside that list (Biology, Chemistry, Physics,
+// Agriculture, Travel and Tourism, Sociology, Global Perspectives) can't be
+// fed into it; if a prefilled student takes any of those, they're listed
+// under "not used in this estimate" rather than silently ignored.
+// -----------------------------------------------------------------------------
+const EMPTY_PREDICTION_FORM = { stream: "Green", sho: "", mat: "", eng: "", geo: "", csci: "", reMark: "", acc: "", hist: "", cs: "", bst: "" };
+
+function PredictAveragePanel() {
+  const [students, setStudents] = useState([]);
+  const [studentsError, setStudentsError] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [form, setForm] = useState(EMPTY_PREDICTION_FORM);
+  const [prefillNote, setPrefillNote] = useState(null); // { studentName, unmappedSubjects }
+  const [prefilling, setPrefilling] = useState(false);
+  const [prefillError, setPrefillError] = useState("");
+  const [predicting, setPredicting] = useState(false);
+  const [predictError, setPredictError] = useState("");
+  const [result, setResult] = useState(null); // { predictedAverage, subjectsProvided }
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await adminListStudents(); // GET /api/admin/students
+        setStudents(camelizeKeys(Array.isArray(res.data) ? res.data : []));
+      } catch (err) {
+        setStudentsError(getErrorMessage(err, "Could not load the student list."));
+      }
+    })();
+  }, []);
+
+  async function loadHistory(studentId) {
+    setHistoryLoading(true);
+    setHistoryError("");
+    try {
+      const params = studentId ? { studentId, limit: 10 } : { limit: 10 };
+      const res = await adminPredictAverageHistory(params); // GET /api/admin/predict-average/history
+      setHistory(camelizeKeys(Array.isArray(res.data) ? res.data : []));
+    } catch (err) {
+      setHistoryError(getErrorMessage(err, "Could not load recent predictions."));
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadHistory(selectedStudentId || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStudentId]);
+
+  function handleMarkChange(key, value) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleStudentSelect(e) {
+    const studentId = e.target.value;
+    setSelectedStudentId(studentId);
+    setResult(null);
+    setPredictError("");
+    setPrefillError("");
+    setPrefillNote(null);
+
+    if (!studentId) {
+      setForm(EMPTY_PREDICTION_FORM);
+      return;
+    }
+
+    setPrefilling(true);
+    try {
+      const res = await adminPrefillPrediction(studentId); // GET /api/admin/predict-average/prefill/{id}
+      const data = camelizeKeys(res.data || {});
+      const nextForm = { ...EMPTY_PREDICTION_FORM, stream: data.stream || "Green" };
+      MODEL_SUBJECT_FIELDS.forEach(({ key }) => {
+        if (data[key] !== undefined && data[key] !== null) {
+          nextForm[key] = String(data[key]);
+        }
+      });
+      setForm(nextForm);
+      setPrefillNote({ studentName: data.studentName, unmappedSubjects: data.unmappedSubjects || [] });
+    } catch (err) {
+      setPrefillError(getErrorMessage(err, "Could not load this student's marks. You can still fill the form in by hand."));
+    } finally {
+      setPrefilling(false);
+    }
+  }
+
+  async function handlePredict(e) {
+    e.preventDefault();
+    setPredictError("");
+    setResult(null);
+
+    const payload = { stream: form.stream, studentId: selectedStudentId ? Number(selectedStudentId) : null };
+    MODEL_SUBJECT_FIELDS.forEach(({ key }) => {
+      if (form[key] !== "" && form[key] !== null && form[key] !== undefined) {
+        payload[key] = Number(form[key]);
+      }
+    });
+
+    setPredicting(true);
+    try {
+      const res = await adminPredictAverage(payload); // POST /api/admin/predict-average
+      setResult(camelizeKeys(res.data));
+      await loadHistory(selectedStudentId || null);
+    } catch (err) {
+      setPredictError(getErrorMessage(err, "Could not run the prediction. Please try again."));
+    } finally {
+      setPredicting(false);
+    }
+  }
+
+  const subjectsEntered = MODEL_SUBJECT_FIELDS.filter(({ key }) => form[key] !== "").length;
+
+  return (
+    <section>
+      <PanelHeader
+        title="Predict Average"
+        subtitle="Early estimate of a student's likely overall average from whichever subjects have been marked so far - most useful while only 2-5 subjects are in."
+      />
+
+      {studentsError && <LoadErrorBanner message={studentsError} />}
+
+      <div className="fp-card" style={{ marginBottom: 20, maxWidth: 780 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+          <div style={{ flex: "1 1 260px" }}>
+            <label className="fp-label" htmlFor="predictStudent">Student (optional)</label>
+            <select id="predictStudent" className="fp-input" value={selectedStudentId} onChange={handleStudentSelect}>
+              <option value="">— Hypothetical / what-if (no student) —</option>
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>{s.fullName} ({s.gradeLevel})</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: "1 1 160px" }}>
+            <label className="fp-label" htmlFor="predictStream">Stream</label>
+            <select
+              id="predictStream" className="fp-input" value={form.stream}
+              onChange={(e) => setForm((prev) => ({ ...prev, stream: e.target.value }))}
+            >
+              {MODEL_STREAM_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {prefilling && <p style={{ color: "var(--fp-ink-soft)", fontSize: "0.85rem" }}>Loading this student's marks…</p>}
+        {prefillError && <div style={{ ...inlineErrorStyle, marginBottom: 12 }}>{prefillError}</div>}
+        {prefillNote && (
+          <div className="fp-card" style={{ background: "rgba(45,106,79,0.06)", borderColor: "var(--fp-canopy)", marginBottom: 16, fontSize: "0.85rem" }}>
+            Prefilled from {prefillNote.studentName}'s marks on file.
+            {prefillNote.unmappedSubjects.length > 0 && (
+              <> Not used in this estimate (outside the model's ten subjects): {prefillNote.unmappedSubjects.join(", ")}.</>
+            )}
+          </div>
+        )}
+
+        <form onSubmit={handlePredict}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
+            {MODEL_SUBJECT_FIELDS.map(({ key, label }) => (
+              <div key={key}>
+                <label className="fp-label" htmlFor={`predict-${key}`}>{label}</label>
+                <input
+                  id={`predict-${key}`} type="number" min="0" max="100" step="0.01"
+                  className="fp-input" placeholder="Not marked"
+                  value={form[key]} onChange={(e) => handleMarkChange(key, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+
+          {predictError && <div style={{ ...inlineErrorStyle, marginBottom: 16 }}>{predictError}</div>}
+
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button type="submit" className="fp-btn fp-btn-gold" disabled={predicting}>
+              <TrendingUp size={16} /> {predicting ? "Predicting…" : "Predict Average"}
+            </button>
+          </div>
+        </form>
+
+        {result && (
+          <div
+            className="fp-card"
+            style={{ marginTop: 20, background: "rgba(45,106,79,0.08)", borderColor: "var(--fp-canopy)" }}
+          >
+            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--fp-canopy)" }}>
+              Predicted Average: {result.predictedAverage}% <GradeBadge score={result.predictedAverage} />
+            </div>
+            <div style={{ color: "var(--fp-ink-soft)", fontSize: "0.85rem", marginTop: 4 }}>
+              Based on {result.subjectsProvided} of {MODEL_SUBJECT_FIELDS.length} subjects entered
+              {subjectsEntered < MODEL_SUBJECT_FIELDS.length && " — accuracy improves as more subjects are marked"}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <PanelHeader
+        title="Recent predictions"
+        subtitle={selectedStudentId ? "Past runs for this student." : "Past runs across all students and what-ifs."}
+        action={
+          <button type="button" className="fp-btn" onClick={() => loadHistory(selectedStudentId || null)}>
+            <RefreshCw size={14} /> Refresh
+          </button>
+        }
+      />
+      {historyLoading ? (
+        <p style={{ color: "var(--fp-ink-soft)" }}>Loading recent predictions…</p>
+      ) : historyError ? (
+        <LoadErrorBanner message={historyError} onRetry={() => loadHistory(selectedStudentId || null)} />
+      ) : history.length === 0 ? (
+        <div className="fp-card fp-empty">No predictions run yet.</div>
+      ) : (
+        <div className="fp-card" style={{ padding: 0, overflow: "hidden" }}>
+          <table className="fp-table">
+            <thead><tr><th>Student</th><th>Stream</th><th>Predicted average</th><th>When</th></tr></thead>
+            <tbody>
+              {history.map((h) => (
+                <tr key={h.id}>
+                  <td>{h.studentName || "— (what-if) —"}</td>
+                  <td><span className="fp-badge fp-badge-gold">{h.stream}</span></td>
+                  <td>{h.predictedAverage}% <GradeBadge score={h.predictedAverage} /></td>
+                  <td style={{ color: "var(--fp-ink-soft)", fontSize: "0.85rem" }}>{h.createdAt}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>

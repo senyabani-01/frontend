@@ -178,6 +178,28 @@ export function adminListPublishedResults() {
 }
 //must be deleted coz l edited them alone
 
+// =============================================================================
+// ADMIN: MARK PREDICTION ("Predict Average") ENDPOINTS
+// =============================================================================
+
+export function adminPrefillPrediction(studentId) {
+  // GET /api/admin/predict-average/prefill/{studentId} - best-effort
+  // prefill of the prediction form from that student's marks on file.
+  return http.get(`/admin/predict-average/prefill/${studentId}`);
+}
+
+export function adminPredictAverage(payload) {
+  // payload: { studentId?, stream, sho?, mat?, eng?, geo?, csci?, reMark?,
+  //            acc?, hist?, cs?, bst? } - only the subjects marked so far
+  // need to be included.
+  return http.post("/admin/predict-average", payload);
+}
+
+export function adminPredictAverageHistory(params = {}) {
+  // params (optional): { studentId, limit }
+  return http.get("/admin/predict-average/history", { params });
+}
+
 
 
 
