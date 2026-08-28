@@ -1638,7 +1638,7 @@ function PredictAveragePanel() {
     <section>
       <PanelHeader
         title="Predict Average"
-        subtitle="Early estimate of a student's likely overall average from whichever subjects have been marked so far - most useful while only 2-5 subjects are in."
+        subtitle="Enter Marks-->Predict Next Term Averages....."
       />
 
       {studentsError && <LoadErrorBanner message={studentsError} />}
