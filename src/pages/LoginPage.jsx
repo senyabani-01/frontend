@@ -166,7 +166,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="fp-card" style={styles.form}>
           <h2 style={{ marginBottom: 4 }}>Sign in</h2>
           <p style={{ color: "var(--fp-ink-soft)", marginBottom: 20, fontSize: "0.9rem" }}>
-            Welcome to FPA Analytics
+            Welcome to FPA Analytics 2026
           </p>
 
           {(error || authError) && (
